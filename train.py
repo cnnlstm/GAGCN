@@ -5,18 +5,13 @@ import numpy as np
 import h5py
 from sklearn.cluster import *
 import json
-
-training_ = {}
-for i in range(10):
-    training_[i]=random.sample(range(0,101),51)
+from train_test_split import train_classes_
 
 
-print (training_)
 
-
-for Iclass in range(10):
+for Iclass in range(30):
     
-    training_classes = training_[Iclass]
+    training_classes = train_classes_[Iclass]
     testing_classes = []
     for i in range(1,102):
         if i not in training_classes:
@@ -253,87 +248,5 @@ for Iclass in range(10):
             }
             save_checkpoint('epoch-{:0>10}'.format(epoch))
 
-    
-    
-    
-    
-    
-    
-    import numpy as np
-    import h5py
-    import json
-    import torch
-    import torch.nn.functional as F
-    from sklearn.neighbors import NearestNeighbors
-    
-    testing_classes=[]
-    for i in range(1,102):
-        if i not in training_classes:
-            testing_classes.append(i-1)
-    f = open("result.txt","a")
-    path ="save_"+str(Iclass)+"/"
-
-    def get_nn(Full_data, one_example):
-        nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='cosine').fit(Full_data)
-        distances, nn_indices = nbrs.kneighbors(one_example)
-        return nn_indices
-    
-    g = h5py.File("glove_ucf101.h5")
-    label_vectors = g['vectors'][:]
-    gt_labels = h5py.File("feature/rgb_test_data_"+str(Iclass)+".h5")['label'][:]
-
-    
-    
-    gt_labvec = []
-    for i in testing_classes:
-        gt_labvec.append(label_vectors[i])
-    gt_labvec = np.array(gt_labvec)
-    g.close()
-    
-    gt_labvec = torch.tensor(gt_labvec)
-    gt_labvec = F.normalize(gt_labvec).detach().numpy()
-    
-    cluster_index = json.load(open('cluster_index.json', 'r'))
-    accs = []
-    accs_dic = {}
-    preds = []
-
-    for pred in sorted(os.listdir(path)):
-            preds.append(pred)
-    
-            pred_file = torch.load(path+"/"+pred)
-            pre_labvec = []
-            pred_label = pred_file['pred'].cpu().detach().numpy()
-            for i in testing_classes:
-                pre_labvec.append([pred_label[i],i+1])  #i from 0
-
-
-    
-            dics = {}
-            for i in range(len(pre_labvec)):
-                n = get_nn(gt_labvec,pre_labvec[i][0].reshape(1,-1))
-                dics[pre_labvec[i][1]]=testing_classes[int(n)]+1     #testing_classes begin from 0
-            total = 0
-            correct = 0
-            for n in cluster_index:
-                pred_label = dics[int(n)]
-                for m in cluster_index[str(n)]:
-                    total+=1
-                    gt_label = gt_labels[m]
-                    if int(gt_label)==int(pred_label):
-                        correct+=1
-            acc = correct/total
-            #print acc
-            accs_dic[acc]=[pred]
-            accs.append(acc)
-    best_pred = accs_dic[max(accs)]
-    for i in preds:
-            if i != best_pred[0]:
-               os.remove(path+"/"+i)
-    print best_pred,"acc:",max(accs),correct,total
-    f.write(str(max(accs)))
-    f.write("\n")
-
-    
     
     
